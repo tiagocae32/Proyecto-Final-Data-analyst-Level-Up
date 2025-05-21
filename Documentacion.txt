@@ -1,0 +1,157 @@
+Documentación proyecto final
+
+1) Publico Objetivo:
+
+2- Listado de tablas y como se relacionan.
+
+Modelo armado en SQL server => Se hizo un modelo de datos en estrella. Ideal para este tipo de analisis.
+- fct_ventas_consolidada => UNION de fct_ventas y fct_ventas_online
+- dim_producto
+- dim_prod_sub
+- dim_tienda
+- dim_geografia
+- dim_calendario
+Creadas en Power BI
+- AniosConVentas
+DAX = AniosConVentas = 
+DISTINCT(
+    SELECTCOLUMNS(
+        FILTER(
+            'fct_ventas',
+            NOT ISBLANK('fct_ventas'[id_venta])
+        ),
+        "Anio", YEAR('fct_ventas'[fecha])
+    )
+)
+- Analisis Ventas Filtrado => Parametro de Campo
+DAX = Analisis Ventas Filtrado = {
+    ("Cantidad de Unidades", NAMEOF('medidas'[Cantidad_Unidades_Filtrado]), 0),
+    ("Total de Ventas", NAMEOF('medidas'[Total Ventas Filtrado]), 1)
+}
+- Medidas
+
+Relaciones:
+
+La tabla de hechos(fct_ventas_consolidada) se relaciona con:
+- La dim_producto a traves del campo id_producto
+- La dim_canal_venta a traves del campo id_canal_venta
+- La dim_tienda a traves del campo id_tienda
+- La dim_calendario a traves del campo fecha
+
+La tabla dim_producto se relaciona con:
+- La fct_ventas_consolidada a traves del campo id_producto
+- La dim_prod_sub a traves del campo id_sub
+
+La tabla dim_prod_sub se relaciona con:
+- La dim_producto a traves del campo id_sub
+
+La tabla dim_tienda se relaciona con:
+- La fct_ventas_consolidada a traves del campo id_tienda
+- La dim_geografia a traves del campo id_geo
+
+La tabla dim_geografia se relaciona con:
+- La dim_tienda traves del campo id_geo
+
+La tabla dim_canal_venta se relaciona con:
+- La fct_ventas_consolidada a traves del campo id_canal_venta
+
+La tabla dim_calendario se relaciona con:
+- La fct_ventas_consolidada a traves del campo fecha
+
+
+3- Cuales son las métricas que voy a utilizar. 
+
+- AñoSeleccionado = Toma el valor del año seleccionado por el usuario para filtrar 
+                el total de ventas o cantidad de unidades vendidas.
+DAX = SELECTEDVALUE(AniosConVentas[Anio])
+
+- Canales de Ventas = Se calcula contando el campo id_canal_venta(los distintos) de la dim_canal_venta y representa 
+                                la cantidad de canales de venta que hay en el sistema.
+DAX = DISTINCTCOUNT(dim_canal_venta[id_canal_venta])
+
+- Cantidad de tiendas = Se calcula contando el campo id_tienda(los distintos) de la dim_tienda y representa 
+                                la cantidad de tiendas que hay en el sistema.
+DAX = DISTINCTCOUNT(dim_tienda[id_tienda])
+
+- Productos comercializados = Se calcula contando la cantidad de productos que hay en base a los ids de la fct_ventas ya que queremos ver
+                            la cantidad de productos que han tenido al menos una venta.
+DAX = DISTINCTCOUNT(fct_ventas[id_producto])
+
+- Cantidad de Unidades Vendidas = Se calcula sumando el campo cant_unid de la fct_ventas y representa 
+                                el total de unidades que se han vendido .
+DAX = SUM(fct_ventas[cant_unid])
+
+- Total Ventas Filtrado = Como cree una tabla con solo los años en donde hubo ventas, esa tabla no tiene relacion con la fact de ventas,
+por lo cual cree esta medida que tiene en cuenta el año seleccionado, para filtrar el monto total de las ventas en ese año.
+DAX = VAR AnioSel = [AñoSeleccionado]
+RETURN
+CALCULATE(
+    [Total Ventas],
+    FILTER(dim_calendario, YEAR(dim_calendario[fecha]) = AnioSel)
+)
+
+- Total Ventas Online Filtrado = Como cree una tabla con solo los años en donde hubo ventas, esa tabla no tiene relacion con la fact de ventas,
+por lo cual cree esta medida que tiene en cuenta el año seleccionado, para filtrar el monto total de las ventas online en ese año.
+DAX = VAR AnioSel = [AñoSeleccionado]
+RETURN
+CALCULATE(
+    [Total Ventas Online],
+    FILTER(dim_calendario, YEAR(dim_calendario[fecha]) = AnioSel)
+)
+
+- Porcentaje tiendas desactivadas = Medida para calcular el porcentaje de tiendas que tiene el status de desactivado. Luego usare el resultado 
+                                de esta medida en un KPI.
+DAX =  VAR TotalTiendas = COUNTROWS(dim_tienda)
+VAR TiendasDesactivadas = 
+    CALCULATE(
+        COUNTROWS(dim_tienda),
+        dim_tienda[status_tienda] = "Desactivado"
+    )
+RETURN DIVIDE(TiendasDesactivadas, TotalTiendas, 0)
+
+- Promedio de costo por producto comercializado = Se calcula haciendo un promedio del campo costo_unit de la fct_ventas y representa 
+                                el costo promedio de los productos comercializados de nuestro sistema.
+DAX = AVERAGE(fct_ventas[costo_unit])
+- Promedio Empleados por tienda = Se calcula haciendo un promedio del campo cant_empleados de la dim_tienda y representa 
+                                la cantidad de empleados promedio que hay trabajando por tienda.
+DAX = AVERAGE(dim_tienda[cant_empleados])
+
+- Total Ventas = Se calcula haciendo una suma del campo monto_total de la fct_ventas_consolidada y representa 
+                                el valor total de las ventas realizadas en las tiendas fisicas.
+DAX = CALCULATE(SUM(fct_ventas_consolidada[monto_total]), fct_ventas_consolidada[Tipo_Tienda] = "Física")
+
+- Total Ventas Online = Se calcula haciendo una suma del campo monto_total de la fct_ventas_consolidada y representa 
+                                el valor total de las ventas realizadas de forma online.
+DAX = CALCULATE(SUM(fct_ventas_consolidada[monto_total]), fct_ventas_consolidada[Tipo_Tienda] = "Online")
+
+4- Un print de pantalla de cada página contando a donde apunta la pagina en cuanto a información (minimo 3 páginas) 
+
+- Pantalla General
+Carpeta img/Pantalla General.png
+
+- Pantalla Tiendas
+Carpeta img/Tiendas.png
+
+- Pantalla Productos
+Carpeta img/Productos.png
+
+
+5- Insights (Opcional)
+
+
+
+
+Requerimientos mínimos del proyecto:
+- Por lo menos 5 medidas ✅
+- Respetar alineación y tamaño de los objetos visuales
+- Elegir una paleta de colores
+- Que las tarjetas tengan el formato adecuado y muestren los números completos 
+y colocar un titulo personalizado a las mismas deshabilitando la etiqueta de categoría
+- Deshabilitar los títulos de los ejes ✅
+- Personalizar los títulos de los gráficos ✅
+- Utilizar parámetros de campo ✅
+- Que los segmentadores también estén pensados para cada página en especifico 
+- Pueden incluir imágenes o iconos (opcional)
+- No utilizar en los objetos visuales medidas implícitas ✅
+- Tabla de medidas ✅
+- OPCIONAL: Agregar a la documentación las queries que utilizaron para crear las vistas en SQL y contar como fue ese proceso. 
