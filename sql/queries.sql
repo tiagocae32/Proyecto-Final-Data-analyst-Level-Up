@@ -1,14 +1,16 @@
+Use Spanish;
+
 DROP VIEW IF EXISTS fct_ventas;
 CREATE VIEW fct_ventas AS 
-SELECT TOP 50000 FS.DateKey AS fecha, FS.channelKey AS id_canal_venta, FS.StoreKey AS id_tienda,
-FS.ProductKey AS id_producto, Fs.SalesAmount as monto_total, FS.UnitPrice as pcio_unit , FS.UnitCost AS costo_unit , FS.SalesQuantity AS cant_unid,
+SELECT TOP 50000 FS.SalesKey AS id_venta, FS.DateKey AS fecha, FS.channelKey AS id_canal_venta, FS.StoreKey AS id_tienda,
+FS.ProductKey AS id_producto, FS.CurrencyKey AS id_moneda, Fs.SalesAmount as monto_total, FS.UnitPrice as pcio_unit , FS.UnitCost AS costo_unit , FS.SalesQuantity AS cant_unid,
 FS.DiscountAmount monto_descuento, FS.DiscountQuantity AS cant_con_desc
 FROM FactSales FS;
 
 DROP VIEW IF EXISTS fct_ventas_online;
 CREATE VIEW fct_ventas_online AS
 SELECT TOP 50000 FOS.OnlineSalesKey as id_venta, FOS.DateKey AS fecha, FOS.StoreKey AS id_tienda,
-FOS.ProductKey AS id_producto, FOS.SalesAmount as monto_total, FOS.UnitPrice as pcio_unit , FOS.UnitCost AS costo_unit , FOS.SalesQuantity AS cant_unid,
+FOS.ProductKey AS id_producto, FOS.CurrencyKey as id_moneda , FOS.SalesAmount as monto_total, FOS.UnitPrice as pcio_unit , FOS.UnitCost AS costo_unit , FOS.SalesQuantity AS cant_unid,
 FOS.DiscountAmount monto_descuento, FOS.DiscountQuantity AS cant_con_desc
 FROM FactOnlineSales FOS;
 
@@ -20,6 +22,7 @@ SELECT
     id_canal_venta,
     id_tienda,
     id_producto,
+	id_moneda,
     costo_unit,
     cant_unid,
     cant_con_desc,
@@ -36,6 +39,7 @@ SELECT
     NULL AS id_canal_venta,
     id_tienda,
     id_producto,
+	id_moneda
     costo_unit,
     cant_unid,
     cant_con_desc,
@@ -47,6 +51,12 @@ FROM fct_ventas_online;
 DROP VIEW IF EXISTS dim_geografia;
 CREATE VIEW dim_geografia AS 
 SELECT dg.GeographyKey as id_geo, dg.ContinentName as continente, dg.CityName as ciudad, dg.RegionCountryName as pais from DimGeography dg
+
+DROP VIEW IF EXISTS dim_moneda;
+CREATE VIEW dim_moneda AS
+SELECT DC.CurrencyKey as id_moneda, DC.CurrencyName AS nombre_moneda, DC.CurrencyDescription AS descricpcion_moneda FROM DimCurrency DC
+
+
 
 -- MODELO SEMANTICO NUMERO 3
 DROP VIEW IF EXISTS fct_ventas_diarias_categoria;
@@ -96,4 +106,5 @@ FROM fct_ventas FV
 INNER JOIN dim_producto DP ON FV.id_producto = DP.id_producto
 INNER JOIN dim_prod_sub DPS ON DPS.id_sub = DP.id_sub
 GROUP BY MONTH(FV.fecha), FV.id_canal_venta, FV.id_tienda, DP.id_categoria;
+
 
