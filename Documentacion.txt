@@ -1,19 +1,27 @@
 Documentación proyecto final
 
 1) Publico Objetivo:
+El siguiente reporte esta orientado a altos mandos de una empresa, para que puedan tener una vision general
+sobre la evolucion e historico de ventas que tuvieron tanto las tiendas fisicas como las ventas que fueron de forma online.
+Aparte de en la primer hoja dar como se dijo antes una vision general, en las dos hojas posteriores se analizo desde el lado de
+las tiendas y productos lo cual refuerza todo el analisis hecho.
+
 
 2- Listado de tablas y como se relacionan.
 
-Modelo armado en SQL server => Se hizo un modelo de datos en estrella. Ideal para este tipo de analisis.
+Modelo armado en SQL server => Se hizo un modelo constelación (dos hechos).
 - fct_ventas_consolidada => UNION de fct_ventas y fct_ventas_online
+- fct_tipo_cambio
 - dim_producto
 - dim_prod_sub
 - dim_tienda
+- dim_moneda
+- dim_canal_venta
 - dim_geografia
 - dim_calendario
 Creadas en Power BI
 - AniosConVentas
-DAX = AniosConVentas = 
+DAX = 
 DISTINCT(
     SELECTCOLUMNS(
         FILTER(
@@ -24,19 +32,22 @@ DISTINCT(
     )
 )
 - Analisis Ventas Filtrado => Parametro de Campo
-DAX = Analisis Ventas Filtrado = {
-    ("Cantidad de Unidades", NAMEOF('medidas'[Cantidad_Unidades_Filtrado]), 0),
-    ("Total de Ventas", NAMEOF('medidas'[Total Ventas Filtrado]), 1)
+DAX = {
+    ("Total de Ventas", NAMEOF('medidas'[Total Ventas Filtrado]), 0),
+    ("Total de Ventas Online", NAMEOF('medidas'[Total Ventas Online Filtrado]), 1)
 }
-- Medidas
 
-Relaciones:
+. Relaciones:
 
 La tabla de hechos(fct_ventas_consolidada) se relaciona con:
 - La dim_producto a traves del campo id_producto
 - La dim_canal_venta a traves del campo id_canal_venta
 - La dim_tienda a traves del campo id_tienda
+- La dim_moneda a traves del campo id_moneda
 - La dim_calendario a traves del campo fecha
+
+La tabla fct_tipo_cambio se relaciona con:
+- La dim_moneda a traves del campo id_moneda
 
 La tabla dim_producto se relaciona con:
 - La fct_ventas_consolidada a traves del campo id_producto
@@ -55,11 +66,23 @@ La tabla dim_geografia se relaciona con:
 La tabla dim_canal_venta se relaciona con:
 - La fct_ventas_consolidada a traves del campo id_canal_venta
 
+La tabla dim_moneda se relaciona con:
+- La fct_ventas_consolidada a traves del campo id_moneda
+- La fct_tipo_cambio a traves del campo id_moneda
+
 La tabla dim_calendario se relaciona con:
 - La fct_ventas_consolidada a traves del campo fecha
 
 
-3- Cuales son las métricas que voy a utilizar. 
+. Columnas Calculadas
+
+Clasificacion Tienda = Se crea esta columna dentro de la tabla dim_tienda para categorizar las tiendas que han superado el total de
+                       5 millones en ventas y las que no, en pos de representar esto en un grafico circular. 
+DAX = VAR TotalVentasTienda = CALCULATE([Total Ventas], ALLEXCEPT(dim_tienda, dim_tienda[nombre_tienda]))
+RETURN 
+    IF(TotalVentasTienda >= 5000000, "Ventas superiores a 5M", "Ventas inferiores a 5M")
+
+. 3- Medidas creadas. 
 
 - AñoSeleccionado = Toma el valor del año seleccionado por el usuario para filtrar 
                 el total de ventas o cantidad de unidades vendidas.
@@ -109,7 +132,7 @@ VAR TiendasDesactivadas =
     )
 RETURN DIVIDE(TiendasDesactivadas, TotalTiendas, 0)
 
-- Promedio de costo por producto comercializado = Se calcula haciendo un promedio del campo costo_unit de la fct_ventas y representa 
+- Promedio de costo por producto = Se calcula haciendo un promedio del campo costo_unit de la fct_ventas y representa 
                                 el costo promedio de los productos comercializados de nuestro sistema.
 DAX = AVERAGE(fct_ventas[costo_unit])
 - Promedio Empleados por tienda = Se calcula haciendo un promedio del campo cant_empleados de la dim_tienda y representa 
@@ -124,7 +147,51 @@ DAX = CALCULATE(SUM(fct_ventas_consolidada[monto_total]), fct_ventas_consolidada
                                 el valor total de las ventas realizadas de forma online.
 DAX = CALCULATE(SUM(fct_ventas_consolidada[monto_total]), fct_ventas_consolidada[Tipo_Tienda] = "Online")
 
-4- Un print de pantalla de cada página contando a donde apunta la pagina en cuanto a información (minimo 3 páginas) 
+- Importe_Convertido_Tiendas_Fisicas = Se calcula usando la medida donde se suman las ventas(fisicas), para luego multiplicarlo
+                                       por el tipo de cambio correspondiente en pos de pasar todo a una misma moneda(el euro).         
+DAX = SUMX(
+    fct_ventas_consolidada,
+    VAR Moneda = fct_ventas_consolidada[id_moneda]
+    VAR TipoCambio =
+        CALCULATE(
+            MAX(fct_tipo_cambio[ultimo_valor]),
+            fct_tipo_cambio[id_moneda] = Moneda
+        )
+    RETURN
+        [Total Ventas] * TipoCambio
+)
+
+Importe_Convertido_Tiendas_Online = Se calcula usando la medida donde se suman las ventas(online), para luego multiplicarlo
+                                       por el tipo de cambio correspondiente en pos de pasar todo a una misma moneda(el euro).   
+DAX = SUMX(
+    fct_ventas_consolidada,
+    VAR Moneda = fct_ventas_consolidada[id_moneda]
+    VAR TipoCambio =
+        CALCULATE(
+            MAX(fct_tipo_cambio[ultimo_valor]),
+            fct_tipo_cambio[id_moneda] = Moneda
+        )
+    RETURN
+        [Total Ventas Online] * TipoCambio
+)
+
+Ganancia Neta por Unidad = Se calcula restandole al precio que tiene cada producto, su coste 
+                           para obtener la ganancia neta que se obtiene por cada unidad vendida. 
+DAX = SUM(dim_producto[pcio_unit]) - SUM(dim_producto[costo_unit])
+
+Promedio ganancia neta por unidad de producto = Se calcula haciendo un promedio de la ganancia neta que se tiene
+                                                agrupando todos los productos de una categoria.
+DAX = AVERAGEX(
+    VALUES(dim_producto[nombre_producto]),
+    [Ganancia Neta por Unidad]
+)
+
+Variacion Ganancias Fisicas/Online = Se calcula restandole al total de ventas(fisicas), el total de ventas online, para terminar diviendolo nuevamente
+                                    por las ganancias fisicas y multiplicando por 100 para obtener el porcentaje de variacion.
+DAX = (([Total Ventas] - [Total Ventas Online]) / [Total Ventas]) * 100
+
+
+. 4- Pantallas
 
 - Pantalla General
 Carpeta img/Pantalla General.png
@@ -135,23 +202,24 @@ Carpeta img/Tiendas.png
 - Pantalla Productos
 Carpeta img/Productos.png
 
+- Modelo de datos
+Carpeta img/Modelo de datos.png
 
-5- Insights (Opcional)
+. 5- Insights
+
+- Se obtuvieron mayores ganancias a traves de las tiendas fisicas que de forma online con una diferencia significativa.
+- En los 3 años que hubo ventas fisicas, los primeros 3 meses fueron los mas bajos en relacion a la ganancia obtenida.
+- Hubo 7 tiendas que tuvieron una ganancia muy superior en comparacion con todas las que le siguen.
+- Hubo un pico de apertura de tiendas en el 2004, para luego en los años posteriorees entrar en una meseta sostenida.
+- A medida que un producto tiene un coste mayor, del mismo se vendieron menos unidades
+- Salvo algunos outliers, se observa que esta balanceada la cantidad de empleados en base a los m2 que tiene una tienda fisica.
 
 
-
-
-Requerimientos mínimos del proyecto:
-- Por lo menos 5 medidas ✅
-- Respetar alineación y tamaño de los objetos visuales
-- Elegir una paleta de colores
-- Que las tarjetas tengan el formato adecuado y muestren los números completos 
-y colocar un titulo personalizado a las mismas deshabilitando la etiqueta de categoría
-- Deshabilitar los títulos de los ejes ✅
-- Personalizar los títulos de los gráficos ✅
-- Utilizar parámetros de campo ✅
-- Que los segmentadores también estén pensados para cada página en especifico 
-- Pueden incluir imágenes o iconos (opcional)
-- No utilizar en los objetos visuales medidas implícitas ✅
-- Tabla de medidas ✅
-- OPCIONAL: Agregar a la documentación las queries que utilizaron para crear las vistas en SQL y contar como fue ese proceso. 
+Queries.
+Estan el archivo queries.sql
+Todas las vistas estan en español, tanto su nombre como los campos.
+Se crearon las vistas de fct_ventas y fct_ventas_online, ambas con 500 mil registros ya que si se cargaban ambas tablas completas, luego power bi
+no iba a poder procesar los mas de 15 millones de registros que se tenian en la fct_ventas_consolidada que es una union de ambas tablas con una columna 
+flag que indica cual fue la modalidad de la venta.
+En la vista fct_tipo_cambio se calcula el tipo de cambio mas actual para cada moneda, en pos de luego en power bi hacer una medida
+que haga una conversion para cada pais(cuando se selecciona)
