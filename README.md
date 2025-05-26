@@ -232,10 +232,13 @@ La tabla `dim_calendario` se relaciona con:
 
 ## 6. Queries SQL
 
-Las queries se encuentran en el archivo `queries.sql`.
+Las queries se encuentran en el archivo `sql/queries.sql`.
 
 Todas las vistas, tanto sus nombres como sus campos, están en español.
 
 Se crearon vistas para `fct_ventas` y `fct_ventas_online`, cada una con **500 mil registros**. Esto se hizo porque cargar las tablas completas (más de 15 millones de registros en `fct_ventas_consolidada`, que es la unión de ambas con un flag para la modalidad de venta) hubiera excedido la capacidad de procesamiento de Power BI.
 
 En la vista `fct_tipo_cambio`, se calcula el tipo de cambio más actual para cada moneda. Esto permite que, en Power BI, se pueda realizar una medida de conversión a una moneda común (el euro) cuando se selecciona un país específico.
+
+## 7. Archivo Power Bi con el reporte
+El mismo se encuentra en la raiz del proyecto y se llama Proyecto Final.pbix.

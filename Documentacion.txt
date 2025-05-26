@@ -223,3 +223,6 @@ no iba a poder procesar los mas de 15 millones de registros que se tenian en la 
 flag que indica cual fue la modalidad de la venta.
 En la vista fct_tipo_cambio se calcula el tipo de cambio mas actual para cada moneda, en pos de luego en power bi hacer una medida
 que haga una conversion para cada pais(cuando se selecciona)
+
+Archivo Power Bi con el reporte.
+El mismo se encuentra en la raiz del proyecto y se llama Proyecto Final.pbix.
